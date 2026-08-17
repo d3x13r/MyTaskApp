@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MyTaskApp",
-    "slug": "MyTaskApp",
+    "slug": "mytaskapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,6 +11,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.d3x13.mytaskapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,6 +38,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "515a509c-b849-4f4b-be75-433322329596"
+      }
+    },
+    "owner": "d3x13rs-team"
   }
 }
