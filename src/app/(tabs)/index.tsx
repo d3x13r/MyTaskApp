@@ -11,81 +11,103 @@ import {
   View,
 } from 'react-native';
 import { useTasks } from '../../context/TaskContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-export default function DashboardScreen() {
-  // Вземаме данните и функцията директно от Context-а
-  const { tasks, toggleTaskToday } = useTasks();
+const getFormattedDateBD = () => {
+  const now = new Date();
+  const days = ['НЕДЕЛЯ', 'ПОНЕДЕЛНИК', 'ВТОРНИК', 'СРЯДА', 'ЧЕТВЪРТЪК', 'ПЕТЪК', 'СЪБОТА'];
+  const months = [
+    'ЯНУАРИ', 'ФЕВРУАРИ', 'МАРТ', 'АПРИЛ', 'МАЙ', 'ЮНИ',
+    'ЮЛИ', 'АВГУСТ', 'СЕПТЕМВРИ', 'ОКТЕМВРИ', 'НОЕМВРИ', 'ДЕКЕМВРИ'
+  ];
+  return `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+};
+
+export default function HomeScreen() {
+  const { getTasksForDate, isTaskCompletedOnDate, toggleTaskCompletion } = useTasks();
+  const { colors, isDark } = useTheme();
+
   const todayStr = getTodayString();
+  const todayTasks = getTasksForDate(todayStr);
 
-  const todayActiveTasks = tasks.filter((t) => t.startDate <= todayStr && t.endDate >= todayStr);
-  const todayCompletedCount = todayActiveTasks.filter((t) => t.completedToday).length;
-  const todayTotalCount = todayActiveTasks.length;
-  const todayProgressPct = todayTotalCount > 0 ? Math.round((todayCompletedCount / todayTotalCount) * 100) : 0;
-
-  const formattedTodayDate = new Date().toLocaleDateString('bg-BG', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  const completedCount = todayTasks.filter((t) => isTaskCompletedOnDate(t.id, todayStr)).length;
+  const totalCount = todayTasks.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>{formattedTodayDate.toUpperCase()}</Text>
-          <Text style={styles.headerTitle}>Днешен Преглед</Text>
-        </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
+        <Text style={[styles.dateSubtitle, { color: colors.subText }]}>{getFormattedDateBD()}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Днешен Преглед</Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollPadding}>
-        <View style={styles.dashboardProgressCard}>
-          <Text style={styles.dashboardCardTitle}>Напредък за днес</Text>
-          <View style={styles.progressTextRow}>
-            <Text style={styles.dashboardProgressPct}>{todayProgressPct}%</Text>
-            <Text style={styles.dashboardProgressSub}>
-              {todayCompletedCount} от {todayTotalCount} изпълнени
+<ScrollView 
+  style={{ flex: 1 }} 
+  contentContainerStyle={[styles.scrollPadding, { paddingBottom: 100 }]}
+>
+        <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.progressTitle, { color: colors.subText }]}>НАПРЕДЪК ЗА ДНЕС</Text>
+          <View style={styles.progressRow}>
+            <Text style={[styles.progressPercent, { color: colors.text }]}>{progressPercent}%</Text>
+            <Text style={[styles.progressSubtext, { color: colors.subText }]}>
+              {completedCount} от {totalCount} изпълнени
             </Text>
           </View>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${todayProgressPct}%` }]} />
+          <View style={[styles.progressBarBackground, { backgroundColor: colors.border }]}>
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
           </View>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Текущи Задачи за Днес</Text>
-          <Text style={styles.sectionCount}>{todayTotalCount}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Текущи Задачи за Днес</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.card }]}>
+            <Text style={[styles.countBadgeText, { color: colors.subText }]}>{totalCount}</Text>
+          </View>
         </View>
 
-        {todayActiveTasks.length === 0 ? (
+        {todayTasks.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="sparkles-outline" size={36} color="#CCCCCC" />
-            <Text style={styles.emptyStateText}>Няма активни задачи за днес!</Text>
+            <Ionicons name="checkmark-done-circle-outline" size={48} color={colors.subText} />
+            <Text style={[styles.emptyStateText, { color: colors.subText }]}>Няма задачи за днес</Text>
           </View>
         ) : (
-          todayActiveTasks.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.taskCard,
-                styles.dashboardTaskCard,
-                item.completedToday && styles.taskCardDone,
-              ]}
-              onPress={() => toggleTaskToday(item.id)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, item.completedToday && styles.checkboxDone]}>
-                {item.completedToday && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.taskTitle, item.completedToday && styles.taskTitleDone]}>
-                  {item.title}
-                </Text>
-                <Text style={styles.taskCategory}>{item.category}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+          todayTasks.map((item) => {
+            const isCompleted = isTaskCompletedOnDate(item.id, todayStr);
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.taskCard,
+                  styles.yellowAccentCard,
+                  { backgroundColor: colors.card, borderLeftColor: colors.primary }
+                ]}
+                onPress={() => toggleTaskCompletion(item.id, todayStr)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={24}
+                  color={isCompleted ? colors.primary : colors.subText}
+                  style={{ marginRight: 12 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.taskTitle,
+                      { color: colors.text },
+                      isCompleted && { color: colors.subText, textDecorationLine: 'line-through' },
+                    ]}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.taskSubtext, { color: colors.subText }]}>{item.category}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -95,144 +117,105 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    paddingBottom: 16,
   },
-  headerSubtitle: {
+  dateSubtitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#181818',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 2,
   },
   scrollPadding: {
     padding: 20,
   },
-  dashboardProgressCard: {
-    backgroundColor: '#FFFFFF',
+  progressCard: {
     borderRadius: 24,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  dashboardCardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#666',
-    textTransform: 'uppercase',
+  progressTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  progressTextRow: {
+  progressRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
     justifyContent: 'space-between',
+    alignItems: 'baseline',
     marginTop: 8,
     marginBottom: 12,
   },
-  dashboardProgressPct: {
+  progressPercent: {
     fontSize: 36,
-    fontWeight: '800',
-    color: '#181818',
+    fontWeight: '900',
   },
-  dashboardProgressSub: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+  progressSubtext: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  progressBarTrack: {
-    height: 10,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 5,
+  progressBarBackground: {
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#FFCC00',
-    borderRadius: 5,
+    borderRadius: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#181818',
+    marginRight: 10,
   },
-  sectionCount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
-    backgroundColor: '#EFEFEF',
+  countBadge: {
+    borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 2,
-    borderRadius: 12,
+  },
+  countBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 30,
+    paddingTop: 40,
   },
   emptyStateText: {
-    color: '#999',
     fontSize: 15,
     fontWeight: '600',
     marginTop: 8,
   },
   taskCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
   },
-  dashboardTaskCard: {
+  yellowAccentCard: {
     borderLeftWidth: 5,
-    borderLeftColor: '#FFCC00',
-  },
-  taskCardDone: {
-    backgroundColor: '#F8FAFC',
-    opacity: 0.6,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D1D1D6',
-    marginRight: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxDone: {
-    backgroundColor: '#181818',
-    borderColor: '#181818',
   },
   taskTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#181818',
   },
-  taskTitleDone: {
-    textDecorationLine: 'line-through',
-    color: '#8E8E93',
-  },
-  taskCategory: {
+  taskSubtext: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: 2,
   },
 });
