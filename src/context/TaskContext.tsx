@@ -18,6 +18,7 @@ interface TaskContextType {
   categories: string[];
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   deleteCategory: (categoryName: string) => Promise<void>;
   getTasksForDate: (dateString: string) => Task[];
@@ -121,6 +122,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateDoc(taskRef, data);
   };
 
+  const deleteTask = async (taskId: string) => {
+    if (!user) return;
+    const taskRef = doc(db, 'users', user.uid, 'tasks', taskId);
+    await deleteDoc(taskRef);
+  };
+
   const addCategory = async (name: string) => {
     const trimmed = name.trim();
     if (!user || !trimmed) return;
@@ -152,6 +159,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         categories,
         addTask,
         updateTask,
+        deleteTask,
         addCategory,
         deleteCategory,
         getTasksForDate,

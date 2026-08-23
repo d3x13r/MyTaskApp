@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Platform,
   SafeAreaView,
@@ -15,21 +14,46 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CustomAlert } from '../components/CustomAlert';
 import { useTasks } from '../context/TaskContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function CategoriesScreen() {
   const router = useRouter();
   const { categories, addCategory, deleteCategory } = useTasks();
+  const { colors, isDark } = useTheme();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'warning' | 'info';
+    showCancel?: boolean;
+    confirmText?: string;
+    targetCategory?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   const handleAddCategory = async () => {
     const trimmed = newCategoryName.trim();
     if (!trimmed) return;
 
     if (categories.includes(trimmed)) {
-      Alert.alert('Грешка', 'Тази категория вече съществува.');
+      setAlertConfig({
+        visible: true,
+        title: 'Грешка',
+        message: 'Тази категория вече съществува.',
+        type: 'error',
+      });
       return;
     }
 
@@ -38,57 +62,80 @@ export default function CategoriesScreen() {
       setNewCategoryName('');
       setModalVisible(false);
     } catch (e: any) {
-      Alert.alert('Грешка при запис', e.message);
+      setAlertConfig({
+        visible: true,
+        title: 'Грешка при запис',
+        message: e.message,
+        type: 'error',
+      });
     }
   };
 
-  const handleDeleteCategory = (categoryToDelete: string) => {
-    Alert.alert(
-      'Изтриване',
-      `Сигурни ли сте, че искате да изтриете категория "${categoryToDelete}"?`,
-      [
-        { text: 'Отказ', style: 'cancel' },
-        {
-          text: 'Изтрий',
-          style: 'destructive',
-          onPress: async () => {
-            if (deleteCategory) {
-              try {
-                setDeletingCategory(categoryToDelete);
-                await deleteCategory(categoryToDelete);
-              } catch (e: any) {
-                Alert.alert('Грешка при изтриване', e.message);
-              } finally {
-                setDeletingCategory(null);
-              }
-            }
-          },
-        },
-      ]
-    );
+  const promptDeleteCategory = (categoryToDelete: string) => {
+    setAlertConfig({
+      visible: true,
+      title: 'Изтриване',
+      message: `Сигурни ли сте, че искате да изтриете категория "${categoryToDelete}"?`,
+      type: 'warning',
+      showCancel: true,
+      confirmText: 'Изтрий',
+      targetCategory: categoryToDelete,
+    });
+  };
+
+  const confirmDeleteCategory = async () => {
+    const categoryToDelete = alertConfig.targetCategory;
+    setAlertConfig((prev) => ({ ...prev, visible: false }));
+
+    if (categoryToDelete && deleteCategory) {
+      try {
+        setDeletingCategory(categoryToDelete);
+        await deleteCategory(categoryToDelete);
+      } catch (e: any) {
+        setAlertConfig({
+          visible: true,
+          title: 'Грешка при изтриване',
+          message: e.message,
+          type: 'error',
+        });
+      } finally {
+        setDeletingCategory(null);
+      }
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.card}
+      />
+
       {/* Шапка с бутон "Назад" */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#0F172A" />
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2A2A2A' : '#F1F5F9' }]}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Категории</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Категории</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollPadding}>
         {categories.map((item: string) => (
-          <View key={item} style={styles.categoryCard}>
+          <View
+            key={item}
+            style={[styles.categoryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
             <View style={styles.categoryRow}>
-              <Ionicons name="folder-outline" size={20} color="#64748B" style={{ marginRight: 12 }} />
-              <Text style={styles.categoryTitle}>{item}</Text>
+              <Ionicons name="folder-outline" size={20} color={colors.subText} style={{ marginRight: 12 }} />
+              <Text style={[styles.categoryTitle, { color: colors.text }]}>{item}</Text>
             </View>
             <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeleteCategory(item)}
+              style={[styles.deleteButton, { backgroundColor: isDark ? '#3A1E1E' : '#FEF2F2' }]}
+              onPress={() => promptDeleteCategory(item)}
               disabled={deletingCategory === item}
             >
               {deletingCategory === item ? (
@@ -101,7 +148,7 @@ export default function CategoriesScreen() {
         ))}
       </ScrollView>
 
-      {/* Floating Action Button за добавяне */}
+      {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.floatingFabButton}
         onPress={() => setModalVisible(true)}
@@ -112,30 +159,46 @@ export default function CategoriesScreen() {
 
       {/* Модал за добавяне на категория */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.container}>
-            <View style={modalStyles.header}>
-              <Text style={modalStyles.title}>Нова Категория</Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Нова Категория</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#0F172A" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={modalStyles.label}>Име на категорията</Text>
+            <Text style={[styles.modalLabel, { color: colors.subText }]}>Име на категорията</Text>
             <TextInput
-              style={modalStyles.input}
+              style={[
+                styles.modalInput,
+                { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+              ]}
               placeholder="напр. Хоби, Финанси..."
+              placeholderTextColor={colors.subText}
               value={newCategoryName}
               onChangeText={setNewCategoryName}
               autoFocus
             />
 
-            <TouchableOpacity style={modalStyles.saveButton} onPress={handleAddCategory}>
-              <Text style={modalStyles.saveButtonText}>Добави Категория</Text>
+            <TouchableOpacity style={styles.modalSaveButton} onPress={handleAddCategory}>
+              <Text style={styles.modalSaveButtonText}>Добави Категория</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* Персонализиран изглед за потвърждения и грешки */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        showCancel={alertConfig.showCancel}
+        confirmText={alertConfig.confirmText}
+        onConfirm={alertConfig.showCancel ? confirmDeleteCategory : () => setAlertConfig((p) => ({ ...p, visible: false }))}
+        onCancel={() => setAlertConfig((p) => ({ ...p, visible: false }))}
+      />
     </SafeAreaView>
   );
 }
@@ -143,36 +206,30 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
   },
   scrollPadding: {
     padding: 20,
     paddingBottom: 90,
   },
   categoryCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -180,7 +237,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   categoryRow: {
     flexDirection: 'row',
@@ -189,12 +245,10 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#181818',
   },
   deleteButton: {
     padding: 8,
     borderRadius: 10,
-    backgroundColor: '#FEF2F2',
     minWidth: 34,
     alignItems: 'center',
     justifyContent: 'center',
@@ -215,55 +269,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 5,
   },
-});
-
-const modalStyles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
-  container: {
-    backgroundColor: '#FFFFFF',
+  modalContainer: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  title: {
+  modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
   },
-  label: {
+  modalLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: '#F8FAFC',
+  modalInput: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 12,
     padding: 12,
     fontSize: 15,
-    color: '#0F172A',
     marginBottom: 20,
   },
-  saveButton: {
+  modalSaveButton: {
     backgroundColor: '#FFCC00',
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
     marginBottom: 10,
   },
-  saveButtonText: {
+  modalSaveButtonText: {
     color: '#181818',
     fontSize: 16,
     fontWeight: '800',

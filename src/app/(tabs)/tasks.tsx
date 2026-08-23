@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CustomAlert } from '../../components/CustomAlert';
 import { Task, useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -604,7 +605,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
 };
 
 export default function TasksScreen() {
-  const { getTasksForDate, addTask, updateTask, categories } = useTasks();
+  const { getTasksForDate, addTask, updateTask, deleteTask, categories } = useTasks();
   const { colors, isDark } = useTheme();
 
   const tasks = getTasksForDate('') || []; 
@@ -617,10 +618,32 @@ export default function TasksScreen() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedFilter, setSelectedFilter] = useState('Всички');
 
+  const [deleteAlertConfig, setDeleteAlertConfig] = useState<{
+    visible: boolean;
+    task: Task | null;
+  }>({
+    visible: false,
+    task: null,
+  });
+
   const filteredTasks = tasks.filter((t: Task) => {
     if (selectedFilter === 'Всички') return true;
     return t.category === selectedFilter;
   });
+
+  const promptDeleteTask = (task: Task) => {
+    setDeleteAlertConfig({
+      visible: true,
+      task,
+    });
+  };
+
+  const confirmDeleteTask = async () => {
+    if (deleteAlertConfig.task && deleteTask) {
+      await deleteTask(deleteAlertConfig.task.id);
+    }
+    setDeleteAlertConfig({ visible: false, task: null });
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -690,12 +713,21 @@ export default function TasksScreen() {
                   </Text>
                 </View>
                 
-                <TouchableOpacity
-                  style={[styles.editButton, { backgroundColor: colors.inputBg }]}
-                  onPress={() => setEditingTask(item)}
-                >
-                  <Ionicons name="pencil-outline" size={20} color={colors.subText} />
-                </TouchableOpacity>
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: colors.inputBg }]}
+                    onPress={() => setEditingTask(item)}
+                  >
+                    <Ionicons name="pencil-outline" size={18} color={colors.subText} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: isDark ? '#3A1E1E' : '#FEF2F2' }]}
+                    onPress={() => promptDeleteTask(item)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })
@@ -723,6 +755,19 @@ export default function TasksScreen() {
         categories={categoriesList}
         onClose={() => setEditingTask(null)}
         onUpdateTask={updateTask}
+      />
+
+      {/* Персонализиран модал за потвърждение на изтриването */}
+      <CustomAlert
+        visible={deleteAlertConfig.visible}
+        title="Изтриване"
+        message={`Сигурни ли сте, че искате да изтриете задача "${deleteAlertConfig.task?.title}"?`}
+        type="warning"
+        showCancel
+        confirmText="Изтрий"
+        cancelText="Отказ"
+        onConfirm={confirmDeleteTask}
+        onCancel={() => setDeleteAlertConfig({ visible: false, task: null })}
       />
     </SafeAreaView>
   );
@@ -764,7 +809,7 @@ const styles = StyleSheet.create({
   },
   scrollPadding: {
     padding: 20,
-    paddingBottom: 120, // Осигурява място, за да не се закрива последната задача зад навигацията
+    paddingBottom: 120,
   },
   emptyState: {
     alignItems: 'center',
@@ -800,14 +845,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  editButton: {
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 8,
+  },
+  actionButton: {
     padding: 8,
     borderRadius: 12,
-    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   floatingFabButton: {
     position: 'absolute',
-    bottom: 90, // Повдигнат над долната навигационна лента
+    bottom: 90,
     right: 20,
     width: 56,
     height: 56,

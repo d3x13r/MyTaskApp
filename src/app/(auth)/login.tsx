@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   Platform,
   SafeAreaView,
   StatusBar,
@@ -12,19 +11,39 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CustomAlert } from '../../components/CustomAlert';
 import { useAuth } from '../../context/AuthContext';
+import { getReadableErrorMessage } from '../../utils/errorMessage';
 
 export default function LoginScreen() {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Състояние за CustomAlert
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'success';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
+
   const { login, register } = useAuth();
   const router = useRouter();
 
+  const showAlert = (title: string, message: string, type: 'error' | 'success' = 'error') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
   const handleSubmit = async () => {
     if (!email || !password) {
-      Alert.alert('Грешка', 'Попълнете всички полета');
+      showAlert('Грешка', 'Моля, попълнете всички полета.');
       return;
     }
     try {
@@ -35,13 +54,12 @@ export default function LoginScreen() {
       }
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Грешка', error.message);
+      showAlert('Грешка при вход', getReadableErrorMessage(error));
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Тъмен статус бар, за да се виждат часът и известията */}
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
 
       <Text style={styles.title}>{isRegister ? 'Нова Регистрация' : 'Вход в профила'}</Text>
@@ -67,7 +85,6 @@ export default function LoginScreen() {
 
       {!isRegister && (
         <View style={styles.optionsRow}>
-          {/* Чекбокс Запомни ме */}
           <TouchableOpacity
             style={styles.rememberMeContainer}
             onPress={() => setRememberMe(!rememberMe)}
@@ -79,7 +96,6 @@ export default function LoginScreen() {
             <Text style={styles.rememberMeText}>Запомни ме</Text>
           </TouchableOpacity>
 
-          {/* Линк за забравена парола */}
           <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
             <Text style={styles.forgotText}>Забравена парола?</Text>
           </TouchableOpacity>
@@ -90,7 +106,6 @@ export default function LoginScreen() {
         <Text style={styles.buttonText}>{isRegister ? 'Регистрация' : 'Вход'}</Text>
       </TouchableOpacity>
 
-      {/* Оформен бутон с подчертан текст за действие */}
       <View style={styles.switchContainer}>
         <Text style={styles.switchLabel}>
           {isRegister ? 'Вече имате профил?' : 'Нямате профил?'}
@@ -101,6 +116,16 @@ export default function LoginScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Персонализиран изглед на съобщенията */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText="ОК"
+        onConfirm={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }
