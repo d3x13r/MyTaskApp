@@ -1,20 +1,24 @@
-
 import {
-    User,
-    createUserWithEmailAndPassword,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signOut,
-    updatePassword
+  User,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  createUserWithEmailAndPassword,
+  inMemoryPersistence,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut,
+  updatePassword,
 } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { auth } from '../services/firebaseConfig';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
+  login: (email: string, pass: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -35,7 +39,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string, rememberMe: boolean = true) => {
+    // В уеб/React Native задаваме persistence според избора на потребителя
+    if (Platform.OS === 'web') {
+      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, persistence);
+    } else if (!rememberMe) {
+      await setPersistence(auth, inMemoryPersistence);
+    }
+
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
