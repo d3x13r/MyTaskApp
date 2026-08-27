@@ -56,6 +56,15 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="overdue"
+          options={{
+            title: 'Просрочени',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? 'alert-circle' : 'alert-circle-outline'} size={24} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="tasks"
           options={{
             title: 'Задачи',

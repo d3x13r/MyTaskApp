@@ -48,8 +48,6 @@ const getRepeatLabel = (repeat?: string) => {
   return repeat;
 };
 
-const DEFAULT_CATEGORIES = ['Работа', 'Лични', 'Здраве', 'Обучение'];
-
 const MONTH_NAMES = [
   'Януари', 'Февруари', 'Март', 'Април', 'Май', 'Юни',
   'Юли', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември'
@@ -610,9 +608,11 @@ export default function TasksScreen() {
 
   const tasks = getTasksForDate('') || []; 
 
-  const categoriesList: string[] = categories && categories.length > 0
-    ? categories
-    : DEFAULT_CATEGORIES;
+  // Забележка: НЕ подменяме с DEFAULT_CATEGORIES, когато categories е празен —
+  // това е валидно състояние (потребителят е изтрил всички категории), а не
+  // индикатор, че данните още не са заредени. Иначе изтритите дефолтни
+  // категории "възкръсват" всеки път при отваряне на приложението.
+  const categoriesList: string[] = categories || [];
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
