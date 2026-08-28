@@ -4,18 +4,31 @@ import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
+
+const getTodayString = () => new Date().toISOString().split('T')[0];
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { getTasksForDate, isTaskCompletedOnDate, getOverdueTasks } = useTasks();
 
   const ACTIVE_COLOR = '#FFCC00'; // Активен жълт цвят
   const INACTIVE_COLOR = colors.subText;
 
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 8;
   const tabBarHeight = 60 + bottomPadding;
+
+  const todayStr = getTodayString();
+  const todayTasks = getTasksForDate(todayStr);
+  const incompleteTodayCount = todayTasks.filter((task) => !isTaskCompletedOnDate(task.id, todayStr)).length;
+  const overdueCount = getOverdueTasks().length;
+
+  // React Navigation показва бадж само ако стойността е truthy — при 0 не подаваме нищо.
+  const dashboardBadge = incompleteTodayCount > 0 ? incompleteTodayCount : undefined;
+  const overdueBadge = overdueCount > 0 ? overdueCount : undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -52,6 +65,13 @@ export default function TabsLayout() {
           name="index"
           options={{
             title: t('tabs.dashboard'),
+            tabBarBadge: dashboardBadge,
+            tabBarBadgeStyle: {
+              backgroundColor: '#FFCC00',
+              color: '#181818',
+              fontSize: 10,
+              fontWeight: '800',
+            },
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
             ),
@@ -61,6 +81,13 @@ export default function TabsLayout() {
           name="overdue"
           options={{
             title: t('overdue.tabTitle'),
+            tabBarBadge: overdueBadge,
+            tabBarBadgeStyle: {
+              backgroundColor: '#E5484D',
+              color: '#FFFFFF',
+              fontSize: 10,
+              fontWeight: '800',
+            },
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'alert-circle' : 'alert-circle-outline'} size={24} color={color} />
             ),
