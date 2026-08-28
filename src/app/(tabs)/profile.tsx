@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -18,7 +19,21 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  cancelDailyReminders,
+  EVENING_REMINDER_HOUR,
+  EVENING_REMINDER_MINUTE,
+  MORNING_REMINDER_HOUR,
+  MORNING_REMINDER_MINUTE,
+  requestNotificationPermission,
+  scheduleDailyReminders,
+} from '../../services/notifications';
 import { getReadableErrorMessage } from '../../utils/errorMessage';
+
+const NOTIFICATIONS_STORAGE_KEY = 'notifications_enabled';
+
+const formatHourMinute = (hour: number, minute: number) =>
+  `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -26,9 +41,61 @@ export default function ProfileScreen() {
   const { themeMode, setThemeMode, colors } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // Дефолт false при първо стартиране — по-честно е, отколкото да изглежда
+  // "включено", докато няма реално разрешение и нищо не е насрочено.
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+
+  // Зареждаме запазеното предпочитание при отваряне на екрана.
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+        setNotificationsEnabled(stored === 'true');
+      } finally {
+        setNotificationsLoaded(true);
+      }
+    })();
+  }, []);
+
+  // Ако известията са включени и потребителят смени езика, пренасрочваме
+  // напомнянията с преведения текст на новия език.
+  useEffect(() => {
+    if (!notificationsLoaded || !notificationsEnabled) return;
+    scheduleDailyReminders({
+      morningTitle: t('notifications.morningTitle'),
+      morningBody: t('notifications.morningBody'),
+      eveningTitle: t('notifications.eveningTitle'),
+      eveningBody: t('notifications.eveningBody'),
+    }).catch(() => {});
+  }, [language, notificationsLoaded]);
+
+  const handleToggleNotifications = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          t('profile.notificationsPermissionDeniedTitle'),
+          t('profile.notificationsPermissionDeniedMessage')
+        );
+        return;
+      }
+      await scheduleDailyReminders({
+        morningTitle: t('notifications.morningTitle'),
+        morningBody: t('notifications.morningBody'),
+        eveningTitle: t('notifications.eveningTitle'),
+        eveningBody: t('notifications.eveningBody'),
+      });
+      setNotificationsEnabled(true);
+      AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, 'true').catch(() => {});
+    } else {
+      await cancelDailyReminders();
+      setNotificationsEnabled(false);
+      AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, 'false').catch(() => {});
+    }
+  };
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
@@ -154,17 +221,28 @@ export default function ProfileScreen() {
         </View>
 
         {/* Карта Известия */}
-        <View style={[styles.settingCard, { backgroundColor: colors.card }]}>
-          <View style={styles.itemLeft}>
-            <Ionicons name="notifications-outline" size={20} color={colors.text} />
-            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.notificationsLabel')}</Text>
+        <View style={[styles.settingCard, styles.notificationsCard, { backgroundColor: colors.card }]}>
+          <View style={styles.notificationsCardRow}>
+            <View style={styles.itemLeft}>
+              <Ionicons name="notifications-outline" size={20} color={colors.text} />
+              <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.notificationsLabel')}</Text>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+            />
           </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#FFFFFF"
-          />
+
+          {notificationsEnabled && (
+            <Text style={[styles.notificationsHint, { color: colors.subText, borderTopColor: colors.border }]}>
+              {t('profile.notificationsHint', {
+                morningTime: formatHourMinute(MORNING_REMINDER_HOUR, MORNING_REMINDER_MINUTE),
+                eveningTime: formatHourMinute(EVENING_REMINDER_HOUR, EVENING_REMINDER_MINUTE),
+              })}
+            </Text>
+          )}
         </View>
 
         {/* Карта Категории */}
@@ -263,6 +341,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerSubtitle: {
     fontSize: 11,
@@ -316,6 +396,23 @@ const styles = StyleSheet.create({
   settingText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  notificationsCard: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  notificationsCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  notificationsHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 17,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
   },
   themeSelector: {
     flexDirection: 'row',

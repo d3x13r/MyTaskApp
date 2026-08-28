@@ -663,10 +663,8 @@ export default function TasksScreen() {
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <Text style={[styles.headerSubtitle, { color: colors.subText }]}>{t('tasks.headerSubtitle')}</Text>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{t('tasks.headerTitle')}</Text>
-      </View>
 
-      <View style={[styles.filterContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           {[ALL_FILTER, ...categoriesList].map((filter) => (
             <TouchableOpacity
               key={filter}
@@ -793,7 +791,9 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerSubtitle: {
     fontSize: 11,
@@ -804,10 +804,8 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
   },
-  filterContainer: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+  filterScroll: {
+    marginTop: 14,
   },
   filterChip: {
     paddingHorizontal: 16,
