@@ -21,6 +21,7 @@ interface TaskContextType {
   deleteTask: (taskId: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   deleteCategory: (categoryName: string) => Promise<void>;
+  deleteAllUserData: () => Promise<void>;
   getTasksForDate: (dateString: string) => Task[];
   getOverdueTasks: () => { task: Task; date: string }[];
   isTaskCompletedOnDate: (taskId: string, dateString: string) => boolean;
@@ -275,6 +276,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // Трайно изтрива ВСИЧКИ данни на потребителя от Firestore (задачи, категории,
+  // скрити дефолтни категории) — използва се при изтриване на профила.
+  // Firestore не поддържа изтриване на цяла подколекция наведнъж, затова
+  // обхождаме всеки документ поотделно.
+  const deleteAllUserData = async () => {
+    if (!user) return;
+    const subcollections = ['tasks', 'categories', 'hiddenDefaultCategories'];
+
+    for (const colName of subcollections) {
+      const colRef = collection(db, 'users', user.uid, colName);
+      const snapshot = await getDocs(colRef);
+      await Promise.all(
+        snapshot.docs.map((document) => deleteDoc(doc(db, 'users', user.uid, colName, document.id)))
+      );
+    }
+  };
+
   return (
     <TaskContext.Provider
       value={{
@@ -285,6 +303,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteTask,
         addCategory,
         deleteCategory,
+        deleteAllUserData,
         getTasksForDate,
         getOverdueTasks,
         isTaskCompletedOnDate,

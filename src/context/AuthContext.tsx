@@ -3,8 +3,11 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   createUserWithEmailAndPassword,
+  deleteUser,
+  EmailAuthProvider,
   inMemoryPersistence,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
@@ -23,6 +26,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (newPass: string) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -65,8 +69,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Firebase изисква "скорошен" логин за чувствителни операции като изтриване
+  // на профил — затова първо се преоторизираме с текущата парола, преди
+  // реалното изтриване. Firestore данните на потребителя трябва да се
+  // изтрият ОТДЕЛНО (виж TaskContext.deleteAllUserData) ПРЕДИ това извикване,
+  // докато потребителят все още е автентикиран с валидно uid.
+  const deleteAccount = async (password: string) => {
+    if (!auth.currentUser || !auth.currentUser.email) {
+      throw new Error('No authenticated user');
+    }
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, password);
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    await deleteUser(auth.currentUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword, changePassword }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword, changePassword, deleteAccount }}>
       {!loading && children}
     </AuthContext.Provider>
   );

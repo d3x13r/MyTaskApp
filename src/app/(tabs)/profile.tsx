@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
   cancelDailyReminders,
@@ -37,7 +38,8 @@ const formatHourMinute = (hour: number, minute: number) =>
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, changePassword } = useAuth();
+  const { user, logout, changePassword, deleteAccount } = useAuth();
+  const { deleteAllUserData } = useTasks();
   const { themeMode, setThemeMode, colors } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
@@ -47,6 +49,10 @@ export default function ProfileScreen() {
   const [notificationsLoaded, setNotificationsLoaded] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+
+  const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Зареждаме запазеното предпочитание при отваряне на екрана.
   useEffect(() => {
@@ -118,6 +124,28 @@ export default function ProfileScreen() {
       router.replace('/(auth)/login');
     } catch (e: any) {
       Alert.alert(t('profile.logoutErrorTitle'), getReadableErrorMessage(e, t));
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteAccountPassword) {
+      Alert.alert(t('common.error'), t('profile.deleteAccountPasswordRequired'));
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      // Важно: трием данните в Firestore, ДОКАТО потребителят все още е
+      // автентикиран (security rules разчитат на валидно auth.uid).
+      // Едва след това чупим самата сесия чрез изтриване на Auth профила.
+      await deleteAllUserData();
+      await deleteAccount(deleteAccountPassword);
+      setDeleteAccountModalVisible(false);
+      setDeleteAccountPassword('');
+      router.replace('/(auth)/login');
+    } catch (e: any) {
+      Alert.alert(t('common.error'), getReadableErrorMessage(e, t));
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -285,6 +313,16 @@ export default function ProfileScreen() {
             {t('profile.logoutLabel')}
           </Text>
         </TouchableOpacity>
+
+        {/* Бутон Изтриване на профила — умишлено по-настойчив (запълнен), за да е
+            визуално различим от обикновения изход и да сигнализира необратимост */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={() => setDeleteAccountModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteAccountText}>{t('profile.deleteAccountLabel')}</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Модал за Смяна на парола */}
@@ -322,6 +360,59 @@ export default function ProfileScreen() {
               >
                 <Text style={[styles.saveText, { color: colors.textOnPrimary }]}>
                   {t('common.save')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Модал за Изтриване на профила */}
+      <Modal visible={deleteAccountModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.dangerText }]}>
+              {t('profile.deleteAccountWarningTitle')}
+            </Text>
+            <Text style={[styles.deleteAccountWarningText, { color: colors.subText }]}>
+              {t('profile.deleteAccountWarningMessage')}
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              placeholder={t('profile.deleteAccountPasswordPlaceholder')}
+              placeholderTextColor={colors.subText}
+              secureTextEntry
+              value={deleteAccountPassword}
+              onChangeText={setDeleteAccountPassword}
+              editable={!deletingAccount}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  setDeleteAccountModalVisible(false);
+                  setDeleteAccountPassword('');
+                }}
+                disabled={deletingAccount}
+              >
+                <Text style={[styles.cancelText, { color: colors.subText }]}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.dangerText, opacity: deletingAccount ? 0.6 : 1 }]}
+                onPress={handleDeleteAccount}
+                disabled={deletingAccount}
+              >
+                <Text style={[styles.saveText, { color: '#FFFFFF' }]}>
+                  {deletingAccount ? t('profile.deleteAccountInProgress') : t('profile.deleteAccountConfirmButton')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -439,6 +530,21 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  deleteAccountButton: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  deleteAccountText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  deleteAccountWarningText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 16,
   },
   modalOverlay: {
     flex: 1,
