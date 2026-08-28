@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -16,11 +16,18 @@ import { Task, useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const OVERDUE_COLOR = '#E5484D';
+const DIVIDER_COLOR = '#D1D5DB'; // Светлосиво, фиксирано — независимо от темата
+
+// 'YYYY-MM-DD' -> 'ДД-ММ-ГГГГ'
+const formatDateDDMMYYYY = (dateString: string) => {
+  const [y, m, d] = dateString.split('-');
+  return `${d}-${m}-${y}`;
+};
 
 export default function OverdueScreen() {
   const { getOverdueTasks, toggleTaskCompletion } = useTasks();
   const { colors, isDark } = useTheme();
-  const { t, tArray } = useLanguage();
+  const { t } = useLanguage();
 
   const overdueItems = getOverdueTasks();
 
@@ -33,11 +40,20 @@ export default function OverdueScreen() {
     setPendingConfirm(null);
   };
 
-  const formatOverdueDate = (dateString: string) => {
-    const monthsShort = tArray('monthsShort');
-    const [, m, d] = dateString.split('-').map(Number);
-    return `${d} ${monthsShort[m - 1]}`;
-  };
+  // Групираме пропуснатите появявания по дата (overdueItems вече е сортиран
+  // от най-скорошна към най-стара дата, така че групите излизат в същия ред).
+  const groupedByDate = useMemo(() => {
+    const groups: { date: string; items: { task: Task; date: string }[] }[] = [];
+    overdueItems.forEach((item) => {
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup && lastGroup.date === item.date) {
+        lastGroup.items.push(item);
+      } else {
+        groups.push({ date: item.date, items: [item] });
+      }
+    });
+    return groups;
+  }, [overdueItems]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -61,24 +77,36 @@ export default function OverdueScreen() {
             </Text>
           </View>
         ) : (
-          overdueItems.map(({ task, date }) => (
-            <TouchableOpacity
-              key={`${task.id}_${date}`}
-              style={[
-                styles.taskCard,
-                { backgroundColor: colors.card, borderLeftColor: OVERDUE_COLOR },
-              ]}
-              onPress={() => setPendingConfirm({ task, date })}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="ellipse-outline" size={24} color={OVERDUE_COLOR} style={{ marginRight: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-                <Text style={[styles.taskSubtext, { color: colors.subText }]}>
-                  {task.category} · {t('overdue.overdueSince', { date: formatOverdueDate(date) })}
+          groupedByDate.map((group) => (
+            <View key={group.date}>
+              <View style={styles.dateDivider}>
+                <View style={[styles.dateDividerLine, { backgroundColor: DIVIDER_COLOR }]} />
+                <Text style={[styles.dateDividerText, { color: colors.subText }]}>
+                  {formatDateDDMMYYYY(group.date)}
                 </Text>
+                <View style={[styles.dateDividerLine, { backgroundColor: DIVIDER_COLOR }]} />
               </View>
-            </TouchableOpacity>
+
+              {group.items.map(({ task, date }) => (
+                <TouchableOpacity
+                  key={`${task.id}_${date}`}
+                  style={[
+                    styles.taskCard,
+                    { backgroundColor: colors.card, borderLeftColor: OVERDUE_COLOR },
+                  ]}
+                  onPress={() => setPendingConfirm({ task, date })}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="ellipse-outline" size={24} color={OVERDUE_COLOR} style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                    <Text style={[styles.taskSubtext, { color: colors.subText }]}>
+                      {task.category}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
           ))
         )}
       </ScrollView>
@@ -130,6 +158,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
+  },
+  dateDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 10,
+  },
+  dateDividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dateDividerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginHorizontal: 10,
   },
   taskCard: {
     borderRadius: 20,
