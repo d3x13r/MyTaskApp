@@ -10,38 +10,37 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const getFormattedDateBD = () => {
-  const now = new Date();
-  const days = ['НЕДЕЛЯ', 'ПОНЕДЕЛНИК', 'ВТОРНИК', 'СРЯДА', 'ЧЕТВЪРТЪК', 'ПЕТЪК', 'СЪБОТА'];
-  const months = [
-    'ЯНУАРИ', 'ФЕВРУАРИ', 'МАРТ', 'АПРИЛ', 'МАЙ', 'ЮНИ',
-    'ЮЛИ', 'АВГУСТ', 'СЕПТЕМВРИ', 'ОКТЕМВРИ', 'НОЕМВРИ', 'ДЕКЕМВРИ'
-  ];
-  return `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
-};
-
 export default function HomeScreen() {
   const { getTasksForDate, isTaskCompletedOnDate, toggleTaskCompletion } = useTasks();
   const { colors, isDark } = useTheme();
+  const { t, tArray } = useLanguage();
 
   const todayStr = getTodayString();
   const todayTasks = getTasksForDate(todayStr);
 
-  const completedCount = todayTasks.filter((t) => isTaskCompletedOnDate(t.id, todayStr)).length;
+  const completedCount = todayTasks.filter((item) => isTaskCompletedOnDate(item.id, todayStr)).length;
   const totalCount = todayTasks.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const getFormattedDate = () => {
+    const now = new Date();
+    const days = tArray('weekdaysFull');
+    const months = tArray('months');
+    return `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.header, { backgroundColor: colors.card }]}>
-        <Text style={[styles.dateSubtitle, { color: colors.subText }]}>{getFormattedDateBD()}</Text>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Днешен Преглед</Text>
+        <Text style={[styles.dateSubtitle, { color: colors.subText }]}>{getFormattedDate()}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('dashboard.headerTitle')}</Text>
       </View>
 
 <ScrollView 
@@ -49,11 +48,11 @@ export default function HomeScreen() {
   contentContainerStyle={[styles.scrollPadding, { paddingBottom: 100 }]}
 >
         <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.progressTitle, { color: colors.subText }]}>НАПРЕДЪК ЗА ДНЕС</Text>
+          <Text style={[styles.progressTitle, { color: colors.subText }]}>{t('dashboard.progressTitle')}</Text>
           <View style={styles.progressRow}>
             <Text style={[styles.progressPercent, { color: colors.text }]}>{progressPercent}%</Text>
             <Text style={[styles.progressSubtext, { color: colors.subText }]}>
-              {completedCount} от {totalCount} изпълнени
+              {t('dashboard.completedOf', { completed: completedCount, total: totalCount })}
             </Text>
           </View>
           <View style={[styles.progressBarBackground, { backgroundColor: colors.border }]}>
@@ -62,7 +61,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Текущи Задачи за Днес</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.tasksToday')}</Text>
           <View style={[styles.countBadge, { backgroundColor: colors.card }]}>
             <Text style={[styles.countBadgeText, { color: colors.subText }]}>{totalCount}</Text>
           </View>
@@ -71,7 +70,7 @@ export default function HomeScreen() {
         {todayTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="checkmark-done-circle-outline" size={48} color={colors.subText} />
-            <Text style={[styles.emptyStateText, { color: colors.subText }]}>Няма задачи за днес</Text>
+            <Text style={[styles.emptyStateText, { color: colors.subText }]}>{t('dashboard.noTasksToday')}</Text>
           </View>
         ) : (
           todayTasks.map((item) => {

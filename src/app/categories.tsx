@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { CustomAlert } from '../components/CustomAlert';
+import { useLanguage } from '../context/LanguageContext';
 import { useTasks } from '../context/TaskContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -22,6 +23,7 @@ export default function CategoriesScreen() {
   const router = useRouter();
   const { categories, addCategory, deleteCategory } = useTasks();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -50,8 +52,8 @@ export default function CategoriesScreen() {
     if (categories.includes(trimmed)) {
       setAlertConfig({
         visible: true,
-        title: 'Грешка',
-        message: 'Тази категория вече съществува.',
+        title: t('common.error'),
+        message: t('categories.alreadyExists'),
         type: 'error',
       });
       return;
@@ -64,7 +66,7 @@ export default function CategoriesScreen() {
     } catch (e: any) {
       setAlertConfig({
         visible: true,
-        title: 'Грешка при запис',
+        title: t('categories.addErrorTitle'),
         message: e.message,
         type: 'error',
       });
@@ -74,11 +76,11 @@ export default function CategoriesScreen() {
   const promptDeleteCategory = (categoryToDelete: string) => {
     setAlertConfig({
       visible: true,
-      title: 'Изтриване',
-      message: `Сигурни ли сте, че искате да изтриете категория "${categoryToDelete}"?`,
+      title: t('categories.deleteConfirmTitle'),
+      message: t('categories.deleteConfirmMessage', { name: categoryToDelete }),
       type: 'warning',
       showCancel: true,
-      confirmText: 'Изтрий',
+      confirmText: t('common.delete'),
       targetCategory: categoryToDelete,
     });
   };
@@ -94,7 +96,7 @@ export default function CategoriesScreen() {
       } catch (e: any) {
         setAlertConfig({
           visible: true,
-          title: 'Грешка при изтриване',
+          title: t('categories.deleteErrorTitle'),
           message: e.message,
           type: 'error',
         });
@@ -119,7 +121,7 @@ export default function CategoriesScreen() {
         >
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Категории</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('categories.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -162,19 +164,19 @@ export default function CategoriesScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Нова Категория</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('categories.newCategoryTitle')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.modalLabel, { color: colors.subText }]}>Име на категорията</Text>
+            <Text style={[styles.modalLabel, { color: colors.subText }]}>{t('categories.nameLabel')}</Text>
             <TextInput
               style={[
                 styles.modalInput,
                 { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
               ]}
-              placeholder="напр. Хоби, Финанси..."
+              placeholder={t('categories.namePlaceholder')}
               placeholderTextColor={colors.subText}
               value={newCategoryName}
               onChangeText={setNewCategoryName}
@@ -182,7 +184,7 @@ export default function CategoriesScreen() {
             />
 
             <TouchableOpacity style={styles.modalSaveButton} onPress={handleAddCategory}>
-              <Text style={styles.modalSaveButtonText}>Добави Категория</Text>
+              <Text style={styles.modalSaveButtonText}>{t('categories.addButton')}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -3,11 +3,13 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { t } = useLanguage();
 
   const ACTIVE_COLOR = '#FFCC00'; // Активен жълт цвят
   const INACTIVE_COLOR = colors.subText;
@@ -49,7 +51,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Табло',
+            title: t('tabs.dashboard'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
             ),
@@ -58,7 +60,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="overdue"
           options={{
-            title: 'Просрочени',
+            title: t('overdue.tabTitle'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'alert-circle' : 'alert-circle-outline'} size={24} color={color} />
             ),
@@ -67,7 +69,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="tasks"
           options={{
-            title: 'Задачи',
+            title: t('tabs.tasks'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'list' : 'list-outline'} size={24} color={color} />
             ),
@@ -76,7 +78,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="stats"
           options={{
-            title: 'Статистика',
+            title: t('tabs.stats'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={24} color={color} />
             ),
@@ -85,7 +87,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Настройки',
+            title: t('tabs.profile'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
             ),

@@ -1,24 +1,27 @@
-export const getReadableErrorMessage = (error: any): string => {
+export const getReadableErrorMessage = (
+  error: any,
+  t: (key: string) => string
+): string => {
   const code = error?.code || error?.message || '';
 
   if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password')) {
-    return 'Невалиден имейл или парола.';
+    return t('errors.invalidCredential');
   }
   if (code.includes('auth/user-not-found')) {
-    return 'Няма намерен профил с този имейл.';
+    return t('errors.userNotFound');
   }
   if (code.includes('auth/email-already-in-use')) {
-    return 'Вече съществува профил с този имейл.';
+    return t('errors.emailInUse');
   }
   if (code.includes('auth/weak-password')) {
-    return 'Паролата трябва да съдържа поне 6 символа.';
+    return t('errors.weakPassword');
   }
   if (code.includes('auth/network-request-failed')) {
-    return 'Проблем с интернет връзката.';
+    return t('errors.networkError');
   }
   if (code.includes('auth/too-many-requests')) {
-    return 'Твърде много опити. Опитайте отново по-късно.';
+    return t('errors.tooManyRequests');
   }
 
-  return error?.message || 'Възникна непредвидена грешка.';
+  return error?.message || t('errors.generic');
 };

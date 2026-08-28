@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { CustomAlert } from '../../components/CustomAlert';
 import { Task, useTasks } from '../../context/TaskContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
@@ -26,32 +27,27 @@ const addOneYearStr = (dateStr: string) => {
 
 type ExtendedRepeatOption = Task['repeat'] | 'custom';
 
-const REPEAT_OPTIONS: { label: string; value: ExtendedRepeatOption }[] = [
-  { label: 'Без', value: 'none' },
-  { label: 'Всеки ден', value: 'day' },
-  { label: 'Всяка седмица', value: 'week' },
-  { label: 'Всеки месец', value: 'month' },
-  { label: 'Всяка година', value: 'year' },
-  { label: 'По избор', value: 'custom' },
+const getRepeatOptions = (t: (key: string) => string): { label: string; value: ExtendedRepeatOption }[] => [
+  { label: t('repeat.noneOption'), value: 'none' },
+  { label: t('repeat.dayOption'), value: 'day' },
+  { label: t('repeat.weekOption'), value: 'week' },
+  { label: t('repeat.monthOption'), value: 'month' },
+  { label: t('repeat.yearOption'), value: 'year' },
+  { label: t('repeat.customOption'), value: 'custom' },
 ];
 
-const getRepeatLabel = (repeat?: string) => {
-  if (!repeat || repeat === 'none') return 'Без повторение';
-  if (repeat === 'day') return 'Всеки ден';
-  if (repeat === 'week') return 'Всяка седмица';
-  if (repeat === 'month') return 'Всеки месец';
-  if (repeat === 'year') return 'Всяка година';
+const getRepeatLabel = (repeat: string | undefined, t: (key: string, params?: Record<string, string | number>) => string) => {
+  if (!repeat || repeat === 'none') return t('repeat.noneLabel');
+  if (repeat === 'day') return t('repeat.dayLabel');
+  if (repeat === 'week') return t('repeat.weekLabel');
+  if (repeat === 'month') return t('repeat.monthLabel');
+  if (repeat === 'year') return t('repeat.yearLabel');
   if (repeat.startsWith('custom_')) {
     const days = repeat.split('_')[1];
-    return `На всеки ${days} дни`;
+    return t('repeat.customLabel', { days });
   }
   return repeat;
 };
-
-const MONTH_NAMES = [
-  'Януари', 'Февруари', 'Март', 'Април', 'Май', 'Юни',
-  'Юли', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември'
-];
 
 interface CustomDatePickerModalProps {
   visible: boolean;
@@ -67,6 +63,9 @@ const CustomDatePickerModal: React.FC<CustomDatePickerModalProps> = ({
   onSelectDate,
 }) => {
   const { colors } = useTheme();
+  const { t, tArray } = useLanguage();
+  const monthNames = tArray('months');
+  const weekdaysShort = tArray('weekdaysShort');
   const initialDate = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
   const [currentYear, setCurrentYear] = useState(initialDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(initialDate.getMonth());
@@ -117,7 +116,7 @@ const CustomDatePickerModal: React.FC<CustomDatePickerModalProps> = ({
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </TouchableOpacity>
             <Text style={[calendarStyles.monthTitle, { color: colors.text }]}>
-              {MONTH_NAMES[currentMonth]} {currentYear}
+              {monthNames[currentMonth]} {currentYear}
             </Text>
             <TouchableOpacity onPress={handleNextMonth} style={[calendarStyles.navButton, { backgroundColor: colors.inputBg }]}>
               <Ionicons name="chevron-forward" size={20} color={colors.text} />
@@ -125,7 +124,7 @@ const CustomDatePickerModal: React.FC<CustomDatePickerModalProps> = ({
           </View>
 
           <View style={calendarStyles.weekDaysRow}>
-            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((day) => (
+            {weekdaysShort.map((day) => (
               <Text key={day} style={[calendarStyles.weekDayText, { color: colors.subText }]}>
                 {day}
               </Text>
@@ -169,7 +168,7 @@ const CustomDatePickerModal: React.FC<CustomDatePickerModalProps> = ({
           </View>
 
           <TouchableOpacity style={[calendarStyles.closeButton, { backgroundColor: colors.inputBg }]} onPress={onClose}>
-            <Text style={[calendarStyles.closeButtonText, { color: colors.subText }]}>Затвори</Text>
+            <Text style={[calendarStyles.closeButtonText, { color: colors.subText }]}>{t('datePicker.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -186,8 +185,10 @@ interface AddTaskModalProps {
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClose, onAddTask }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
+  const repeatOptions = getRepeatOptions(t);
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(categories[0] || 'Работа');
+  const [category, setCategory] = useState(categories[0] || '');
   const [repeat, setRepeat] = useState<ExtendedRepeatOption>('none');
   const [customDays, setCustomDays] = useState('2');
   const [startDate, setStartDate] = useState(getTodayString());
@@ -232,7 +233,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
     });
 
     setTitle('');
-    setCategory(categories[0] || 'Работа');
+    setCategory(categories[0] || '');
     setRepeat('none');
     setCustomDays('2');
     setStartDate(getTodayString());
@@ -245,28 +246,28 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
       <View style={modalStyles.overlay}>
         <View style={[modalStyles.container, { backgroundColor: colors.card }]}>
           <View style={modalStyles.header}>
-            <Text style={[modalStyles.title, { color: colors.text }]}>Нова Задача</Text>
+            <Text style={[modalStyles.title, { color: colors.text }]}>{t('taskModal.newTaskTitle')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={modalStyles.form} showsVerticalScrollIndicator={false}>
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Заглавие</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.titleLabel')}</Text>
             <TextInput
               style={[
                 modalStyles.input,
                 { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }
               ]}
-              placeholder="Въведете заглавие..."
+              placeholder={t('taskModal.titlePlaceholder')}
               placeholderTextColor={colors.subText}
               value={title}
               onChangeText={setTitle}
             />
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Повторение</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.repeatLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.scrollRow}>
-              {REPEAT_OPTIONS.map((rep) => (
+              {repeatOptions.map((rep) => (
                 <TouchableOpacity
                   key={rep.value}
                   style={[
@@ -289,7 +290,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
               ))}
             </ScrollView>
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Категория</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.categoryLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.scrollRow}>
               {categories.map((cat) => (
                 <TouchableOpacity
@@ -316,7 +317,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
 
             {repeat === 'custom' && (
               <>
-                <Text style={[modalStyles.label, { color: colors.subText }]}>Честота на повторение</Text>
+                <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.frequencyLabel')}</Text>
                 <View style={[modalStyles.customDaysContainer, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
                   <TextInput
                     style={[modalStyles.customDaysInput, { color: colors.text }]}
@@ -326,12 +327,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
                     placeholder="1"
                     placeholderTextColor={colors.subText}
                   />
-                  <Text style={[modalStyles.customDaysText, { color: colors.subText }]}>дни</Text>
+                  <Text style={[modalStyles.customDaysText, { color: colors.subText }]}>{t('taskModal.daysUnit')}</Text>
                 </View>
               </>
             )}
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Начална дата</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.startDateLabel')}</Text>
             <TouchableOpacity
               style={[modalStyles.dateInputButton, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
               onPress={() => setActivePicker('start')}
@@ -343,7 +344,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
 
             {repeat !== 'none' && (
               <>
-                <Text style={[modalStyles.label, { color: colors.subText }]}>Крайна дата</Text>
+                <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.endDateLabel')}</Text>
                 <TouchableOpacity
                   style={[modalStyles.dateInputButton, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
                   onPress={() => setActivePicker('end')}
@@ -360,7 +361,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
             style={[modalStyles.saveButton, { backgroundColor: colors.primary }]}
             onPress={handleSave}
           >
-            <Text style={[modalStyles.saveButtonText, { color: colors.textOnPrimary }]}>Запази Задачата</Text>
+            <Text style={[modalStyles.saveButtonText, { color: colors.textOnPrimary }]}>{t('taskModal.saveNewButton')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -391,8 +392,10 @@ interface EditTaskModalProps {
 
 const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories, onClose, onUpdateTask }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
+  const repeatOptions = getRepeatOptions(t);
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(categories[0] || 'Работа');
+  const [category, setCategory] = useState(categories[0] || '');
   const [repeat, setRepeat] = useState<ExtendedRepeatOption>('none');
   const [customDays, setCustomDays] = useState('2');
   const [startDate, setStartDate] = useState(getTodayString());
@@ -466,28 +469,28 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
       <View style={modalStyles.overlay}>
         <View style={[modalStyles.container, { backgroundColor: colors.card }]}>
           <View style={modalStyles.header}>
-            <Text style={[modalStyles.title, { color: colors.text }]}>Редактирай Задача</Text>
+            <Text style={[modalStyles.title, { color: colors.text }]}>{t('taskModal.editTaskTitle')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={modalStyles.form} showsVerticalScrollIndicator={false}>
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Заглавие</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.titleLabel')}</Text>
             <TextInput
               style={[
                 modalStyles.input,
                 { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }
               ]}
-              placeholder="Въведете заглавие..."
+              placeholder={t('taskModal.titlePlaceholder')}
               placeholderTextColor={colors.subText}
               value={title}
               onChangeText={setTitle}
             />
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Повторение</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.repeatLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.scrollRow}>
-              {REPEAT_OPTIONS.map((rep) => (
+              {repeatOptions.map((rep) => (
                 <TouchableOpacity
                   key={rep.value}
                   style={[
@@ -510,7 +513,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
               ))}
             </ScrollView>
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Категория</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.categoryLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.scrollRow}>
               {categories.map((cat) => (
                 <TouchableOpacity
@@ -537,7 +540,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
 
             {repeat === 'custom' && (
               <>
-                <Text style={[modalStyles.label, { color: colors.subText }]}>Честота на повторение</Text>
+                <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.frequencyLabel')}</Text>
                 <View style={[modalStyles.customDaysContainer, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
                   <TextInput
                     style={[modalStyles.customDaysInput, { color: colors.text }]}
@@ -547,12 +550,12 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
                     placeholder="1"
                     placeholderTextColor={colors.subText}
                   />
-                  <Text style={[modalStyles.customDaysText, { color: colors.subText }]}>дни</Text>
+                  <Text style={[modalStyles.customDaysText, { color: colors.subText }]}>{t('taskModal.daysUnit')}</Text>
                 </View>
               </>
             )}
 
-            <Text style={[modalStyles.label, { color: colors.subText }]}>Начална дата</Text>
+            <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.startDateLabel')}</Text>
             <TouchableOpacity
               style={[modalStyles.dateInputButton, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
               onPress={() => setActivePicker('start')}
@@ -564,7 +567,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
 
             {repeat !== 'none' && (
               <>
-                <Text style={[modalStyles.label, { color: colors.subText }]}>Крайна дата</Text>
+                <Text style={[modalStyles.label, { color: colors.subText }]}>{t('taskModal.endDateLabel')}</Text>
                 <TouchableOpacity
                   style={[modalStyles.dateInputButton, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
                   onPress={() => setActivePicker('end')}
@@ -581,7 +584,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
             style={[modalStyles.saveButton, { backgroundColor: colors.primary }]}
             onPress={handleSave}
           >
-            <Text style={[modalStyles.saveButtonText, { color: colors.textOnPrimary }]}>Запази Промените</Text>
+            <Text style={[modalStyles.saveButtonText, { color: colors.textOnPrimary }]}>{t('taskModal.saveEditButton')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -602,9 +605,12 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
   );
 };
 
+const ALL_FILTER = '__all__';
+
 export default function TasksScreen() {
   const { getTasksForDate, addTask, updateTask, deleteTask, categories } = useTasks();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   const tasks = getTasksForDate('') || []; 
 
@@ -616,7 +622,7 @@ export default function TasksScreen() {
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState('Всички');
+  const [selectedFilter, setSelectedFilter] = useState(ALL_FILTER);
 
   const [deleteAlertConfig, setDeleteAlertConfig] = useState<{
     visible: boolean;
@@ -627,7 +633,7 @@ export default function TasksScreen() {
   });
 
   const filteredTasks = tasks.filter((t: Task) => {
-    if (selectedFilter === 'Всички') return true;
+    if (selectedFilter === ALL_FILTER) return true;
     return t.category === selectedFilter;
   });
 
@@ -649,13 +655,13 @@ export default function TasksScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.header, { backgroundColor: colors.card }]}>
-        <Text style={[styles.headerSubtitle, { color: colors.subText }]}>СПИСЪК И РЕДАКТИРАНЕ</Text>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Всички Задачи</Text>
+        <Text style={[styles.headerSubtitle, { color: colors.subText }]}>{t('tasks.headerSubtitle')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('tasks.headerTitle')}</Text>
       </View>
 
       <View style={[styles.filterContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {['Всички', ...categoriesList].map((filter) => (
+          {[ALL_FILTER, ...categoriesList].map((filter) => (
             <TouchableOpacity
               key={filter}
               style={[
@@ -672,7 +678,7 @@ export default function TasksScreen() {
                   selectedFilter === filter && { color: colors.textOnPrimary },
                 ]}
               >
-                {filter}
+                {filter === ALL_FILTER ? t('tasks.filterAll') : filter}
               </Text>
             </TouchableOpacity>
           ))}
@@ -686,7 +692,7 @@ export default function TasksScreen() {
         {filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="clipboard-outline" size={36} color={colors.subText} />
-            <Text style={[styles.emptyStateText, { color: colors.subText }]}>Няма намерени задачи</Text>
+            <Text style={[styles.emptyStateText, { color: colors.subText }]}>{t('tasks.noTasksFound')}</Text>
           </View>
         ) : (
           filteredTasks.map((item: Task) => {
@@ -704,12 +710,12 @@ export default function TasksScreen() {
                   <Text style={[styles.taskTitle, { color: colors.text }]}>{item.title}</Text>
                   
                   <Text style={[styles.taskSubtext, { color: colors.subText }]}>
-                    {item.category} • {getRepeatLabel(item.repeat)}
+                    {item.category} • {getRepeatLabel(item.repeat, t)}
                   </Text>
                   
                   <Text style={[styles.taskDateText, { color: colors.subText }]}>
-                    От: {item.startDate}
-                    {hasRepeat && item.endDate ? `  До: ${item.endDate}` : ''}
+                    {t('tasks.from')}: {item.startDate}
+                    {hasRepeat && item.endDate ? `  ${t('tasks.to')}: ${item.endDate}` : ''}
                   </Text>
                 </View>
                 
@@ -760,12 +766,12 @@ export default function TasksScreen() {
       {/* Персонализиран модал за потвърждение на изтриването */}
       <CustomAlert
         visible={deleteAlertConfig.visible}
-        title="Изтриване"
-        message={`Сигурни ли сте, че искате да изтриете задача "${deleteAlertConfig.task?.title}"?`}
+        title={t('tasks.deleteConfirmTitle')}
+        message={t('tasks.deleteConfirmMessage', { title: deleteAlertConfig.task?.title || '' })}
         type="warning"
         showCancel
-        confirmText="Изтрий"
-        cancelText="Отказ"
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         onConfirm={confirmDeleteTask}
         onCancel={() => setDeleteAlertConfig({ visible: false, task: null })}
       />

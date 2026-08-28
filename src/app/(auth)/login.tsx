@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { CustomAlert } from '../../components/CustomAlert';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getReadableErrorMessage } from '../../utils/errorMessage';
 
 export default function LoginScreen() {
@@ -20,6 +22,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  const { t, language, setLanguage } = useLanguage();
+  const { colors, isDark } = useTheme();
 
   // Състояние за CustomAlert
   const [alertConfig, setAlertConfig] = useState<{
@@ -43,7 +47,7 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!email || !password) {
-      showAlert('Грешка', 'Моля, попълнете всички полета.');
+      showAlert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
     try {
@@ -54,20 +58,42 @@ export default function LoginScreen() {
       }
       router.replace('/(tabs)');
     } catch (error: any) {
-      showAlert('Грешка при вход', getReadableErrorMessage(error));
+      showAlert(t('auth.loginErrorTitle'), getReadableErrorMessage(error, t));
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
-      <Text style={styles.title}>{isRegister ? 'Нова Регистрация' : 'Вход в профила'}</Text>
+      <View style={styles.languageSwitcher}>
+        {(['bg', 'en'] as const).map((lang) => (
+          <TouchableOpacity
+            key={lang}
+            onPress={() => setLanguage(lang)}
+            style={[
+              styles.languageOption,
+              { backgroundColor: language === lang ? colors.primary : colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text
+              style={[
+                styles.languageOptionText,
+                { color: language === lang ? colors.textOnPrimary : colors.subText },
+              ]}
+            >
+              {lang === 'bg' ? t('profile.languageBg') : t('profile.languageEn')}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={[styles.title, { color: colors.text }]}>{isRegister ? t('auth.registerTitle') : t('auth.loginTitle')}</Text>
 
       <TextInput
-        style={styles.input}
-        placeholder="Имейл адрес"
-        placeholderTextColor="#94A3B8"
+        style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+        placeholder={t('auth.emailPlaceholder')}
+        placeholderTextColor={colors.subText}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -75,9 +101,9 @@ export default function LoginScreen() {
       />
 
       <TextInput
-        style={styles.input}
-        placeholder="Парола"
-        placeholderTextColor="#94A3B8"
+        style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+        placeholder={t('auth.passwordPlaceholder')}
+        placeholderTextColor={colors.subText}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -90,29 +116,29 @@ export default function LoginScreen() {
             onPress={() => setRememberMe(!rememberMe)}
             activeOpacity={0.8}
           >
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-              {rememberMe && <Ionicons name="checkmark" size={14} color="#181818" />}
+            <View style={[styles.checkbox, { borderColor: colors.border, backgroundColor: colors.card }, rememberMe && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+              {rememberMe && <Ionicons name="checkmark" size={14} color={colors.textOnPrimary} />}
             </View>
-            <Text style={styles.rememberMeText}>Запомни ме</Text>
+            <Text style={[styles.rememberMeText, { color: colors.subText }]}>{t('auth.rememberMe')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
-            <Text style={styles.forgotText}>Забравена парола?</Text>
+            <Text style={[styles.forgotText, { color: colors.subText }]}>{t('auth.forgotPassword')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>{isRegister ? 'Регистрация' : 'Вход'}</Text>
+      <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleSubmit}>
+        <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>{isRegister ? t('auth.registerButton') : t('auth.loginButton')}</Text>
       </TouchableOpacity>
 
       <View style={styles.switchContainer}>
-        <Text style={styles.switchLabel}>
-          {isRegister ? 'Вече имате профил?' : 'Нямате профил?'}
+        <Text style={[styles.switchLabel, { color: colors.subText }]}>
+          {isRegister ? t('auth.haveAccount') : t('auth.noAccount')}
         </Text>
         <TouchableOpacity onPress={() => setIsRegister(!isRegister)} activeOpacity={0.7}>
-          <Text style={styles.switchActionText}>
-            {isRegister ? 'Влезте тук' : 'Регистрирайте се'}
+          <Text style={[styles.switchActionText, { color: colors.text }]}>
+            {isRegister ? t('auth.loginLink') : t('auth.registerLink')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -123,7 +149,7 @@ export default function LoginScreen() {
         title={alertConfig.title}
         message={alertConfig.message}
         type={alertConfig.type}
-        confirmText="ОК"
+        confirmText={t('common.ok')}
         onConfirm={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
@@ -135,25 +161,37 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#F8F9FA',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  languageSwitcher: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
+    right: 20,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  languageOption: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  languageOptionText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0F172A',
     marginBottom: 24,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     fontSize: 16,
-    color: '#0F172A',
   },
   optionsRow: {
     flexDirection: 'row',
@@ -171,35 +209,25 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
-  checkboxChecked: {
-    backgroundColor: '#FFCC00',
-    borderColor: '#FFCC00',
-  },
   rememberMeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#475569',
   },
   forgotText: {
-    color: '#64748B',
     fontWeight: '600',
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#FFCC00',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonText: {
-    color: '#181818',
     fontWeight: '800',
     fontSize: 16,
   },
@@ -211,12 +239,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   switchLabel: {
-    color: '#64748B',
     fontSize: 15,
     fontWeight: '500',
   },
   switchActionText: {
-    color: '#0F172A',
     fontSize: 15,
     fontWeight: '800',
     textDecorationLine: 'underline',

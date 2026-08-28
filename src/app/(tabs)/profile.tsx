@@ -16,12 +16,15 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { getReadableErrorMessage } from '../../utils/errorMessage';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, changePassword } = useAuth();
   const { themeMode, setThemeMode, colors } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -29,16 +32,16 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
-      Alert.alert('Грешка', 'Паролата трябва да е поне 6 символа.');
+      Alert.alert(t('common.error'), t('profile.passwordTooShort'));
       return;
     }
     try {
       await changePassword(newPassword);
-      Alert.alert('Успех', 'Паролата беше променена успешно.');
+      Alert.alert(t('common.success'), t('profile.passwordChangedSuccess'));
       setNewPassword('');
       setModalVisible(false);
     } catch (e: any) {
-      Alert.alert('Грешка', e.message);
+      Alert.alert(t('common.error'), getReadableErrorMessage(e, t));
     }
   };
 
@@ -47,7 +50,7 @@ export default function ProfileScreen() {
       await logout();
       router.replace('/(auth)/login');
     } catch (e: any) {
-      Alert.alert('Грешка при изход', e.message);
+      Alert.alert(t('profile.logoutErrorTitle'), getReadableErrorMessage(e, t));
     }
   };
 
@@ -55,8 +58,8 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <View>
-          <Text style={[styles.headerSubtitle, { color: colors.subText }]}>НАСТРОЙКИ</Text>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Профил</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.subText }]}>{t('profile.headerSubtitle')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.headerTitle')}</Text>
         </View>
       </View>
 
@@ -68,7 +71,7 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.userName, { color: colors.text }]}>
-              {user?.email ? user.email.split('@')[0] : 'Потребител'}
+              {user?.email ? user.email.split('@')[0] : t('profile.defaultUserName')}
             </Text>
             <Text style={[styles.userEmail, { color: colors.subText }]}>
               {user?.email || 'user@example.com'}
@@ -80,7 +83,7 @@ export default function ProfileScreen() {
         <View style={[styles.settingCard, { backgroundColor: colors.card }]}>
           <View style={styles.itemLeft}>
             <Ionicons name="moon-outline" size={20} color={colors.text} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Тема</Text>
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.themeLabel')}</Text>
           </View>
           <View style={styles.themeSelector}>
             {(['system', 'light', 'dark'] as const).map((mode) => (
@@ -106,7 +109,44 @@ export default function ProfileScreen() {
                     },
                   ]}
                 >
-                  {mode === 'system' ? 'Авто' : mode === 'light' ? 'Светла' : 'Тъмна'}
+                  {mode === 'system' ? t('profile.themeAuto') : mode === 'light' ? t('profile.themeLight') : t('profile.themeDark')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Карта Избор на Език */}
+        <View style={[styles.settingCard, { backgroundColor: colors.card }]}>
+          <View style={styles.itemLeft}>
+            <Ionicons name="language-outline" size={20} color={colors.text} />
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.languageLabel')}</Text>
+          </View>
+          <View style={styles.themeSelector}>
+            {(['bg', 'en'] as const).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                onPress={() => setLanguage(lang)}
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      language === lang ? colors.primary : colors.background,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.themeOptionText,
+                    {
+                      color:
+                        language === lang
+                          ? colors.textOnPrimary
+                          : colors.subText,
+                    },
+                  ]}
+                >
+                  {lang === 'bg' ? t('profile.languageBg') : t('profile.languageEn')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -117,7 +157,7 @@ export default function ProfileScreen() {
         <View style={[styles.settingCard, { backgroundColor: colors.card }]}>
           <View style={styles.itemLeft}>
             <Ionicons name="notifications-outline" size={20} color={colors.text} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Известия</Text>
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.notificationsLabel')}</Text>
           </View>
           <Switch
             value={notificationsEnabled}
@@ -135,7 +175,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.itemLeft}>
             <Ionicons name="folder-open-outline" size={20} color={colors.text} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Категории</Text>
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.categoriesLabel')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.subText} />
         </TouchableOpacity>
@@ -148,7 +188,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.itemLeft}>
             <Ionicons name="key-outline" size={20} color={colors.text} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Смяна на паролата</Text>
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.changePasswordLabel')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.subText} />
         </TouchableOpacity>
@@ -164,7 +204,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="log-out-outline" size={20} color={colors.dangerText} />
           <Text style={[styles.logoutText, { color: colors.dangerText }]}>
-            Изход от профила
+            {t('profile.logoutLabel')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -173,7 +213,7 @@ export default function ProfileScreen() {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Нова парола</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('profile.newPasswordTitle')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -183,7 +223,7 @@ export default function ProfileScreen() {
                   color: colors.text,
                 },
               ]}
-              placeholder="Въведете новата парола"
+              placeholder={t('profile.newPasswordPlaceholder')}
               placeholderTextColor={colors.subText}
               secureTextEntry
               value={newPassword}
@@ -195,7 +235,7 @@ export default function ProfileScreen() {
                 onPress={() => setModalVisible(false)}
               >
                 <Text style={[styles.cancelText, { color: colors.subText }]}>
-                  Отказ
+                  {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -203,7 +243,7 @@ export default function ProfileScreen() {
                 onPress={handleChangePassword}
               >
                 <Text style={[styles.saveText, { color: colors.textOnPrimary }]}>
-                  Запази
+                  {t('common.save')}
                 </Text>
               </TouchableOpacity>
             </View>
