@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Modal,
   Platform,
   SafeAreaView,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CustomAlert } from '../../components/CustomAlert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTasks } from '../../context/TaskContext';
@@ -54,6 +54,19 @@ export default function ProfileScreen() {
   const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  // Обобщено състояние за темизирания CustomAlert (замества стандартните
+  // системни Alert.alert() известия, за да съответстват на дизайна на приложението)
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info' | 'warning';
+  }>({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title: string, message: string, type: 'error' | 'success' | 'info' | 'warning' = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
   // Зареждаме запазеното предпочитание при отваряне на екрана.
   useEffect(() => {
     (async () => {
@@ -82,9 +95,10 @@ export default function ProfileScreen() {
     if (value) {
       const granted = await requestNotificationPermission();
       if (!granted) {
-        Alert.alert(
+        showAlert(
           t('profile.notificationsPermissionDeniedTitle'),
-          t('profile.notificationsPermissionDeniedMessage')
+          t('profile.notificationsPermissionDeniedMessage'),
+          'warning'
         );
         return;
       }
@@ -105,16 +119,16 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
-      Alert.alert(t('common.error'), t('profile.passwordTooShort'));
+      showAlert(t('common.error'), t('profile.passwordTooShort'), 'error');
       return;
     }
     try {
       await changePassword(newPassword);
-      Alert.alert(t('common.success'), t('profile.passwordChangedSuccess'));
+      showAlert(t('common.success'), t('profile.passwordChangedSuccess'), 'success');
       setNewPassword('');
       setModalVisible(false);
     } catch (e: any) {
-      Alert.alert(t('common.error'), getReadableErrorMessage(e, t));
+      showAlert(t('common.error'), getReadableErrorMessage(e, t), 'error');
     }
   };
 
@@ -123,13 +137,13 @@ export default function ProfileScreen() {
       await logout();
       router.replace('/(auth)/login');
     } catch (e: any) {
-      Alert.alert(t('profile.logoutErrorTitle'), getReadableErrorMessage(e, t));
+      showAlert(t('profile.logoutErrorTitle'), getReadableErrorMessage(e, t), 'error');
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!deleteAccountPassword) {
-      Alert.alert(t('common.error'), t('profile.deleteAccountPasswordRequired'));
+      showAlert(t('common.error'), t('profile.deleteAccountPasswordRequired'), 'error');
       return;
     }
     setDeletingAccount(true);
@@ -143,7 +157,7 @@ export default function ProfileScreen() {
       setDeleteAccountPassword('');
       router.replace('/(auth)/login');
     } catch (e: any) {
-      Alert.alert(t('common.error'), getReadableErrorMessage(e, t));
+      showAlert(t('common.error'), getReadableErrorMessage(e, t), 'error');
     } finally {
       setDeletingAccount(false);
     }
@@ -296,10 +310,21 @@ export default function ProfileScreen() {
             <Ionicons name="key-outline" size={20} color={colors.text} />
             <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.changePasswordLabel')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.subText} />
         </TouchableOpacity>
 
-        {/* Бутон Изход (Вътре в ScrollView с визуално разстояние) */}
+        {/* Карта Изтриване на профила — визуално идентична на Смяна на паролата */}
+        <TouchableOpacity
+          style={[styles.settingCard, { backgroundColor: colors.card }]}
+          onPress={() => setDeleteAccountModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.itemLeft}>
+            <Ionicons name="trash-outline" size={20} color={colors.text} />
+            <Text style={[styles.settingText, { color: colors.text }]}>{t('profile.deleteAccountLabel')}</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Бутон Изход — отделен, най-отдолу */}
         <TouchableOpacity
           style={[
             styles.logoutCard,
@@ -312,16 +337,6 @@ export default function ProfileScreen() {
           <Text style={[styles.logoutText, { color: colors.dangerText }]}>
             {t('profile.logoutLabel')}
           </Text>
-        </TouchableOpacity>
-
-        {/* Бутон Изтриване на профила — умишлено по-настойчив (запълнен), за да е
-            визуално различим от обикновения изход и да сигнализира необратимост */}
-        <TouchableOpacity
-          style={styles.deleteAccountButton}
-          onPress={() => setDeleteAccountModalVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.deleteAccountText}>{t('profile.deleteAccountLabel')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -419,6 +434,16 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Темизирано известие — заменя стандартните системни Alert.alert() */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={t('common.ok')}
+        onConfirm={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }
@@ -530,16 +555,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 15,
     fontWeight: '700',
-  },
-  deleteAccountButton: {
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  deleteAccountText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
   },
   deleteAccountWarningText: {
     fontSize: 13,
