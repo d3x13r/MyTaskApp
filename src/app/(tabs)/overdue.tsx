@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -10,8 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CustomAlert } from '../../components/CustomAlert';
 import { useLanguage } from '../../context/LanguageContext';
-import { useTasks } from '../../context/TaskContext';
+import { Task, useTasks } from '../../context/TaskContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const OVERDUE_COLOR = '#E5484D';
@@ -22,6 +23,15 @@ export default function OverdueScreen() {
   const { t, tArray } = useLanguage();
 
   const overdueItems = getOverdueTasks();
+
+  const [pendingConfirm, setPendingConfirm] = useState<{ task: Task; date: string } | null>(null);
+
+  const handleConfirmComplete = () => {
+    if (pendingConfirm) {
+      toggleTaskCompletion(pendingConfirm.task.id, pendingConfirm.date);
+    }
+    setPendingConfirm(null);
+  };
 
   const formatOverdueDate = (dateString: string) => {
     const monthsShort = tArray('monthsShort');
@@ -58,7 +68,7 @@ export default function OverdueScreen() {
                 styles.taskCard,
                 { backgroundColor: colors.card, borderLeftColor: OVERDUE_COLOR },
               ]}
-              onPress={() => toggleTaskCompletion(task.id, date)}
+              onPress={() => setPendingConfirm({ task, date })}
               activeOpacity={0.7}
             >
               <Ionicons name="ellipse-outline" size={24} color={OVERDUE_COLOR} style={{ marginRight: 12 }} />
@@ -72,6 +82,18 @@ export default function OverdueScreen() {
           ))
         )}
       </ScrollView>
+
+      <CustomAlert
+        visible={pendingConfirm !== null}
+        title={t('overdue.confirmTitle')}
+        message={pendingConfirm ? t('overdue.confirmMessage', { title: pendingConfirm.task.title }) : ''}
+        type="warning"
+        showCancel
+        confirmText={t('common.ok')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmComplete}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -60,6 +60,8 @@ export const bg = {
     noMissed: 'Няма пропуснати задачи',
     noMissedDetail: 'Нямаш пропуснати задачи — браво!',
     overdueSince: 'Просрочена от {{date}}',
+    confirmTitle: 'Отбелязване като изпълнена',
+    confirmMessage: 'Сигурни ли сте, че искате да отбележите "{{title}}" като изпълнена? Тя ще бъде премахната от този списък.',
   },
   tabs: {
     dashboard: 'Табло',
@@ -209,6 +211,8 @@ export const en: TranslationDict = {
     noMissed: 'No missed tasks',
     noMissedDetail: "You have no missed tasks — well done!",
     overdueSince: 'Overdue since {{date}}',
+    confirmTitle: 'Mark as completed',
+    confirmMessage: 'Are you sure you want to mark "{{title}}" as completed? It will be removed from this list.',
   },
   tabs: {
     dashboard: 'Dashboard',
