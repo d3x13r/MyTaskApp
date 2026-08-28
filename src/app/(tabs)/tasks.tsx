@@ -25,6 +25,12 @@ const addOneYearStr = (dateStr: string) => {
   return d.toISOString().split('T')[0];
 };
 
+// Само за визуализация: 'YYYY-MM-DD' -> 'ДД-ММ-ГГГГ'. Съхранението остава непроменено.
+const formatDateDDMMYYYY = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}-${m}-${y}`;
+};
+
 type ExtendedRepeatOption = Task['repeat'] | 'custom';
 
 const getRepeatOptions = (t: (key: string) => string): { label: string; value: ExtendedRepeatOption }[] => [
@@ -339,7 +345,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
               activeOpacity={0.7}
             >
               <Ionicons name="calendar-outline" size={20} color={colors.subText} style={{ marginRight: 10 }} />
-              <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{startDate}</Text>
+              <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{formatDateDDMMYYYY(startDate)}</Text>
             </TouchableOpacity>
 
             {repeat !== 'none' && (
@@ -351,7 +357,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, categories, onClos
                   activeOpacity={0.7}
                 >
                   <Ionicons name="calendar-outline" size={20} color={colors.subText} style={{ marginRight: 10 }} />
-                  <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{endDate}</Text>
+                  <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{formatDateDDMMYYYY(endDate)}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -562,7 +568,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
               activeOpacity={0.7}
             >
               <Ionicons name="calendar-outline" size={20} color={colors.subText} style={{ marginRight: 10 }} />
-              <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{startDate}</Text>
+              <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{formatDateDDMMYYYY(startDate)}</Text>
             </TouchableOpacity>
 
             {repeat !== 'none' && (
@@ -574,7 +580,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ visible, task, categories
                   activeOpacity={0.7}
                 >
                   <Ionicons name="calendar-outline" size={20} color={colors.subText} style={{ marginRight: 10 }} />
-                  <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{endDate}</Text>
+                  <Text style={[modalStyles.dateInputText, { color: colors.text }]}>{formatDateDDMMYYYY(endDate)}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -714,8 +720,8 @@ export default function TasksScreen() {
                   </Text>
                   
                   <Text style={[styles.taskDateText, { color: colors.subText }]}>
-                    {t('tasks.from')}: {item.startDate}
-                    {hasRepeat && item.endDate ? `  ${t('tasks.to')}: ${item.endDate}` : ''}
+                    {t('tasks.from')}: {formatDateDDMMYYYY(item.startDate)}
+                    {hasRepeat && item.endDate ? `  ${t('tasks.to')}: ${formatDateDDMMYYYY(item.endDate)}` : ''}
                   </Text>
                 </View>
                 
